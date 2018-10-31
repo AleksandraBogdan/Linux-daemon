@@ -9,8 +9,10 @@
 #include <signal.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/sysinfo.h>
 
 #define M_BYTE 1024*1024
+struct sysinfo info;
 
 void sig_handler(int signo)
 {
@@ -151,7 +153,7 @@ int randomTime()
   return time; 
 }
 
-int urandom()
+/*int urandom()
 {
   int ur= rand();
   int uRandomFile = open("/dev/urandom", O_RDONLY);
@@ -165,19 +167,33 @@ int urandom()
     syslog(LOG_INFO, "from urandom file: %i", uRandomFile);
     return uRandomFile;
   }
+}*/
+
+int randomInterval(int min, int max)
+{
+  return (min + rand() * (max - min));
 }
 
 int rndmgnrt()
 {
   //рандом
   syslog(LOG_INFO, "rndmgnrt");
-  int randTime, randLib, randFile;
+  int randTime, randLib, bufferRam, procs, uptime, randInt;
   
-  randLib = rand() ;
-  randFile = urandom();
+  randLib = rand();
+  //randFile = urandom();
   //syslog(LOG_INFO, "rand = %i", rNum); 
-  randTime = randomTime();
-  return ( (randLib * randTime) ^ randFile ); 
+  uptime = (int)info.uptime;
+  procs = (int)info.procs;
+  bufferRam = (int)info.bufferram;
+  syslog(LOG_INFO, "procs = %i", procs); 
+  //bufferRam = info->loads[0];
+  //syslog(LOG_INFO, "bufferram = %lu", bufferRam); 
+  //randInt = randomInterval(0, 10000);
+   
+  randTime = (int)randomTime();
+  //return (procs * (randTime ^ (bufferRam & randLib)));
+  return ((randLib  ^ randTime) * (bufferRam ^ procs)); 
 }
 
 
@@ -186,10 +202,11 @@ void fillData(FILE *buffer)
   
   syslog(LOG_INFO, "fillData()"); 
   int k = 0;
+  
   while (sizeOfFile(buffer) < 5 * M_BYTE)
   {
     k = rndmgnrt();
-    syslog(LOG_INFO, "k = %i", k); 
+    //syslog(LOG_INFO, "k = %i", k); 
     fwrite(&k, sizeof(int), 1, buffer);
   } 
 }
@@ -241,6 +258,7 @@ int main(int argc,char *argv[])
   int fd, len;
   FILE *pid_fp;
   char pid_buf[16];
+  sysinfo(&info);
   srand(time(NULL));
   if (argc == 2) 
   {
